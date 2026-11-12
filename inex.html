@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Лошадиное правило — Формулы приведения</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --accent: #f59e0b;
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      max-width: 900px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      color: #38bdf8;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .vk-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .vk-link:hover {
+      color: #38bdf8;
+      text-decoration: underline;
+    }
+
+    .vk-link::before {
+      content: "📘";
+      font-size: 1rem;
+    }
+
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      max-width: 1200px;
+      width: 100%;
+      align-items: start;
+    }
+
+    @media (max-width: 950px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--panel);
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    /* --- ЛЕВЫЙ БЛОК: КРУГ И ЛОШАДКА --- */
+    .circle-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .circle-container {
+      position: relative;
+      width: 440px;
+      height: 440px;
+      margin: 10px 0;
+      user-select: none;
+    }
+
+    svg.trig-circle {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .quadrant-area {
+      fill: rgba(255, 255, 255, 0.02);
+      cursor: pointer;
+      transition: fill 0.25s, stroke 0.25s;
+    }
+
+    .quadrant-area:hover {
+      fill: rgba(56, 189, 248, 0.15);
+    }
+
+    .quadrant-area.highlight-active {
+      fill: rgba(16, 185, 129, 0.35) !important;
+      stroke: var(--success);
+      stroke-width: 3px;
+    }
+
+    .quadrant-area.highlight-wrong {
+      fill: rgba(239, 68, 68, 0.35) !important;
+    }
+
+    .axis {
+      stroke: #475569;
+      stroke-width: 2.5;
+    }
+
+    /* Интерактивные углы на круге */
+    .angle-interactive {
+      cursor: pointer;
+      pointer-events: all;
+    }
+
+    .angle-interactive * {
+      cursor: pointer;
+    }
+
+    .angle-marker {
+      font-size: 13px;
+      font-weight: 600;
+      fill: #cbd5e1;
+      transition: all 0.25s ease;
+      pointer-events: all;
+    }
+
+    .angle-interactive:hover .angle-marker,
+    .angle-marker.force-active {
+      fill: #38bdf8 !important;
+      font-size: 16px !important;
+      filter: drop-shadow(0 0 8px #38bdf8);
+    }
+
+    .angle-interactive:hover #marker-left,
+    .angle-interactive:hover #marker-right,
+    .angle-marker.horizontal-active {
+      fill: #fbbf24 !important;
+      font-size: 16px !important;
+      filter: drop-shadow(0 0 8px #f59e0b);
+    }
+
+    /* Пульсация точки */
+    @keyframes anglePulse {
+      0% { r: 6px; filter: drop-shadow(0 0 2px currentColor); }
+      50% { r: 10px; filter: drop-shadow(0 0 10px currentColor); }
+      100% { r: 6px; filter: drop-shadow(0 0 2px currentColor); }
+    }
+
+    .pulse-dot {
+      animation: anglePulse 1.2s infinite ease-in-out;
+    }
+
+    /* Лошадка в центре (кликабельна для остановки) */
+    .horse-wrapper {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      transition: transform 0.15s ease;
+    }
+
+    .horse-wrapper:hover {
+      transform: translate(-50%, -50%) scale(1.06);
+    }
+
+    .horse-svg {
+      width: 90px;
+      height: 90px;
+      transform-origin: center bottom;
+      transition: transform 0.15s ease-out;
+      pointer-events: none;
+    }
+
+    /* Анимации движения головы */
+    .nod-yes {
+      animation: horseNod 0.55s ease-in-out infinite alternate !important;
+    }
+
+    .shake-no {
+      animation: horseShake 0.45s ease-in-out infinite alternate !important;
+    }
+
+    @keyframes horseNod {
+      0% { transform: translateY(-14px) scaleY(1.08); }
+      100% { transform: translateY(14px) scaleY(0.92); }
+    }
+
+    @keyframes horseShake {
+      0% { transform: translateX(-16px) rotate(-10deg); }
+      100% { transform: translateX(16px) rotate(10deg); }
+    }
+
+    .legend {
+      display: flex;
+      gap: 20px;
+      font-size: 0.9rem;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+    }
+
+    /* --- ПРАВЫЙ БЛОК: ЗАДАНИЯ И ТЕСТ --- */
+    .quiz-card {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .variant-select {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    select {
+      background: #0f172a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      outline: none;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .task-status {
+      font-size: 0.95rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .task-prompt-box {
+      background: #0f172a;
+      border-left: 4px solid #38bdf8;
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+
+    .task-expression {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #38bdf8;
+      margin: 6px 0;
+      letter-spacing: 1px;
+    }
+
+    .step-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+
+    .step-title {
+      font-size: 0.95rem;
+      color: #94a3b8;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-title .badge {
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .decomposition-expr {
+      font-size: 1.15rem;
+      color: #f1f5f9;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 8px 14px;
+      border-radius: 8px;
+      display: inline-block;
+      width: fit-content;
+      border: 1px solid var(--border);
+    }
+
+    .angle-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .angle-badge:hover {
+      transform: scale(1.05);
+    }
+
+    .angle-badge.vertical {
+      background: rgba(56, 189, 248, 0.25);
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+    }
+
+    .angle-badge.horizontal {
+      background: rgba(245, 158, 11, 0.25);
+      color: #fbbf24;
+      border: 1px solid #f59e0b;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button.quiz-btn {
+      background: #334155;
+      color: white;
+      border: 2px solid transparent;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button.quiz-btn:hover:not(:disabled) {
+      background: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    /* Постоянная подсветка правильного ответа */
+    button.quiz-btn.selected-persistent {
+      background: #059669 !important;
+      border-color: #34d399 !important;
+      color: white !important;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+      transform: none !important;
+      opacity: 1 !important;
+    }
+
+    button.quiz-btn.unselected-dim {
+      opacity: 0.35 !important;
+      pointer-events: none;
+    }
+
+    button.quiz-btn.wrong-temp {
+      background: var(--danger) !important;
+    }
+
+    .feedback-message {
+      font-size: 0.95rem;
+      font-weight: 500;
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .feedback-message.show {
+      display: block;
+    }
+
+    .feedback-message.success {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--success);
+      color: #6ee7b7;
+    }
+
+    .feedback-message.error {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid var(--danger);
+      color: #fca5a5;
+    }
+
+    .action-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 6px;
+      transition: background 0.2s;
+    }
+
+    .action-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Итоговая карточка оценки */
+    .result-view {
+      display: none;
+      text-align: center;
+      padding: 30px 10px;
+    }
+
+    .grade-circle {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: #0f172a;
+      border: 5px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.5rem;
+      font-weight: bold;
+      color: var(--accent);
+      margin: 0 auto 20px;
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.3);
+    }
+
+    .result-title {
+      font-size: 1.6rem;
+      margin-bottom: 10px;
+    }
+
+    .result-desc {
+      color: var(--text-muted);
+      margin-bottom: 25px;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🐴 Лошадиное правило формул приведения</h1>
+    <p class="subtitle">
+      Вертикальная ось <b>(π/2, 3π/2)</b> — киваем головой вверх-вниз: <b>«ДА, меняем!»</b><br>
+      Горизонтальная ось <b>(π, 2π)</b> — мотаем головой влево-вправо: <b>«НЕТ, не меняем!»</b>
+    </p>
+    <a href="https://vk.ru/country_tutor" target="_blank" rel="noopener noreferrer" class="vk-link">
+      Наша группа ВКонтакте
+    </a>
+  </header>
+
+  <div class="main-container">
+    
+    <!-- КАРТОЧКА С ТРИГОНОМЕТРИЧЕСКИМ КРУГОМ -->
+    <div class="card circle-card">
+      <div style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 6px;">
+        💡 <b>Нажмите на угол</b> — лошадка покажет движение. <b>Клик по центру</b> — остановить.
+      </div>
+
+      <div class="circle-container">
+        <!-- Лошадка в центре (клик останавливает движение) -->
+        <div class="horse-wrapper" id="horseWrapper" onclick="horseReset()" title="Нажмите, чтобы остановить">
+          <svg class="horse-svg" id="horseHead" viewBox="0 0 100 100">
+            <!-- Уши -->
+            <polygon points="28,25 38,5 45,22" fill="#8d5b4c" stroke="#5c3a30" stroke-width="2" />
+            <polygon points="32,23 38,9 42,21" fill="#fca5a5" />
+            <polygon points="55,22 62,5 72,25" fill="#8d5b4c" stroke="#5c3a30" stroke-width="2" />
+            <polygon points="58,21 62,9 68,23" fill="#fca5a5" />
+            <!-- Голова -->
+            <ellipse cx="50" cy="52" rx="30" ry="34" fill="#a06857" stroke="#5c3a30" stroke-width="2" />
+            <!-- Мордочка -->
+            <ellipse cx="50" cy="68" rx="20" ry="15" fill="#c48b79" />
+            <circle cx="43" cy="68" r="3" fill="#3e2723" />
+            <circle cx="57" cy="68" r="3" fill="#3e2723" />
+            <!-- Глаза -->
+            <ellipse cx="36" cy="45" rx="5" ry="6" fill="#ffffff" />
+            <circle cx="36" cy="45" r="3.5" fill="#0f172a" />
+            <circle cx="38" cy="43" r="1.2" fill="#ffffff" />
+            <ellipse cx="64" cy="45" rx="5" ry="6" fill="#ffffff" />
+            <circle cx="64" cy="45" r="3.5" fill="#0f172a" />
+            <circle cx="66" cy="43" r="1.2" fill="#ffffff" />
+            <!-- Чёлка -->
+            <path d="M42,20 Q50,35 48,42 Q52,32 58,20 Z" fill="#3e2723" />
+          </svg>
+        </div>
+
+        <!-- Интерактивный SVG круг -->
+        <svg class="trig-circle" viewBox="-240 -240 480 480">
+          <!-- Четверти для клика в задании -->
+          <path id="quad-1" class="quadrant-area" d="M 0 0 L 190 0 A 190 190 0 0 0 0 -190 Z" onclick="handleQuadrantClick(1)" />
+          <path id="quad-2" class="quadrant-area" d="M 0 0 L 0 -190 A 190 190 0 0 0 -190 0 Z" onclick="handleQuadrantClick(2)" />
+          <path id="quad-3" class="quadrant-area" d="M 0 0 L -190 0 A 190 190 0 0 0 0 190 Z" onclick="handleQuadrantClick(3)" />
+          <path id="quad-4" class="quadrant-area" d="M 0 0 L 0 190 A 190 190 0 0 0 190 0 Z" onclick="handleQuadrantClick(4)" />
+
+          <!-- Окружность -->
+          <circle cx="0" cy="0" r="190" fill="none" stroke="#64748b" stroke-width="2" />
+          
+          <!-- Оси координат -->
+          <line x1="-210" y1="0" x2="210" y2="0" class="axis" />
+          <line x1="0" y1="210" x2="0" y2="-210" class="axis" />
+
+          <!-- Стрелки осей -->
+          <polygon points="212,0 200,-5 200,5" fill="#475569" />
+          <polygon points="0,-212 -5,-200 5,-200" fill="#475569" />
+
+          <!-- Обозначения осей -->
+          <text x="205" y="-10" fill="#94a3b8" font-size="14" font-weight="bold">X</text>
+          <text x="10" y="-200" fill="#94a3b8" font-size="14" font-weight="bold">Y</text>
+
+          <!-- Римские номера четвертей -->
+          <text x="90" y="-90" fill="#475569" font-size="28" font-weight="bold" opacity="0.6">I</text>
+          <text x="-115" y="-90" fill="#475569" font-size="28" font-weight="bold" opacity="0.6">II</text>
+          <text x="-120" y="110" fill="#475569" font-size="28" font-weight="bold" opacity="0.6">III</text>
+          <text x="85" y="110" fill="#475569" font-size="28" font-weight="bold" opacity="0.6">IV</text>
+
+          <!-- КЛИКАБЕЛЬНЫЕ УГЛЫ (работают всегда независимо!) -->
+          <!-- 1. ВЕРХ: π/2, 90° (Вертикальная ось) -->
+          <g id="group-top" class="angle-interactive" onclick="triggerAngle('vertical', 'marker-top', 'dot-top')">
+            <circle cx="0" cy="-190" r="30" fill="#38bdf8" fill-opacity="0.001" />
+            <circle id="dot-top" cx="0" cy="-190" r="7" fill="#38bdf8" />
+            <text id="marker-top" class="angle-marker" x="0" y="-205" text-anchor="middle">π/2 (90°)</text>
+          </g>
+
+          <!-- 2. НИЗ: 3π/2, 270° (Вертикальная ось) -->
+          <g id="group-bottom" class="angle-interactive" onclick="triggerAngle('vertical', 'marker-bottom', 'dot-bottom')">
+            <circle cx="0" cy="190" r="30" fill="#38bdf8" fill-opacity="0.001" />
+            <circle id="dot-bottom" cx="0" cy="190" r="7" fill="#38bdf8" />
+            <text id="marker-bottom" class="angle-marker" x="0" y="218" text-anchor="middle">3π/2 (270°)</text>
+          </g>
+
+          <!-- 3. СЛЕВА: π, 180° (Горизонтальная ось) -->
+          <g id="group-left" class="angle-interactive" onclick="triggerAngle('horizontal', 'marker-left', 'dot-left')">
+            <circle cx="-190" cy="0" r="30" fill="#f59e0b" fill-opacity="0.001" />
+            <circle id="dot-left" cx="-190" cy="0" r="7" fill="#f59e0b" />
+            <text id="marker-left" class="angle-marker" x="-204" y="-8" text-anchor="end">π (180°)</text>
+          </g>
+
+          <!-- 4. СПРАВА: 0, 2π, 360° (Горизонтальная ось) -->
+          <g id="group-right" class="angle-interactive" onclick="triggerAngle('horizontal', 'marker-right', 'dot-right')">
+            <circle cx="190" cy="0" r="30" fill="#f59e0b" fill-opacity="0.001" />
+            <circle id="dot-right" cx="190" cy="0" r="7" fill="#f59e0b" />
+            <text id="marker-right" class="angle-marker" x="204" y="18" text-anchor="start">0; 2π (360°)</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background:#38bdf8;"></div>
+          <span>Вертикальная ось Y: <b>Кивает (вверх-вниз)</b></span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:#f59e0b;"></div>
+          <span>Горизонтальная ось X: <b>Мотает (влево-вправо)</b></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- КАРТОЧКА ЗАДАНИЙ -->
+    <div class="card quiz-card">
+      <div class="top-bar">
+        <div class="variant-select">
+          <label for="variantChoose">Вариант:</label>
+          <select id="variantChoose" onchange="changeVariant(this.value)">
+            <option value="0">Вариант 1 (Базовый)</option>
+            <option value="1">Вариант 2 (Средний)</option>
+            <option value="2">Вариант 3 (Радианы + градусы)</option>
+          </select>
+        </div>
+        <div class="task-status" id="taskCounter">Задание 1 из 5</div>
+      </div>
+
+      <!-- Контейнер решения -->
+      <div id="quizPlayArea">
+        <div class="task-prompt-box">
+          <div style="font-size:0.9rem; color:var(--text-muted);">Преобразуйте по формулам приведения:</div>
+          <div class="task-expression" id="currentExpr">sin(135°)</div>
+        </div>
+
+        <!-- ШАГ 1: ВЫБОР ЧЕТВЕРТИ -->
+        <div class="step-box" id="step1Box">
+          <div class="step-title"><span class="badge">1</span> Нажмите на нужную четверть на круге слева:</div>
+          <div style="font-size: 0.9rem; color: var(--text-muted);" id="quadPrompt">
+            Определите, в какой четверти круга лежит этот угол.
+          </div>
+        </div>
+
+        <!-- ШАГ 2: ЗНАК ИСХОДНОЙ ФУНКЦИИ -->
+        <div class="step-box" id="step2Box" style="display:none;">
+          <div class="step-title"><span class="badge">2</span> Какой знак имеет функция в этой четверти?</div>
+          <div class="btn-row">
+            <button id="btn-sign-plus" class="quiz-btn" onclick="checkSign('+')">Плюс (+)</button>
+            <button id="btn-sign-minus" class="quiz-btn" onclick="checkSign('-')">Минус (-)</button>
+          </div>
+        </div>
+
+        <!-- ШАГ 3: ОПОРНЫЙ УГОЛ И ЛОШАДИНОЕ ПРАВИЛО -->
+        <div class="step-box" id="step3Box" style="display:none;">
+          <div class="step-title"><span class="badge">3</span> Лошадкино правило (меняется ли функция?):</div>
+          
+          <div id="decompositionContainer"></div>
+
+          <div style="font-size:0.92rem; color:#cbd5e1; line-height: 1.4;" id="axisPromptText"></div>
+
+          <div class="btn-row">
+            <button id="btn-change-yes" class="quiz-btn" onclick="checkFunctionChange(true)">Да, меняем</button>
+            <button id="btn-change-no" class="quiz-btn" onclick="checkFunctionChange(false)">Нет, не меняем</button>
+          </div>
+        </div>
+
+        <!-- ШАГ 4: ИТОГОВЫЙ ОТВЕТ -->
+        <div class="step-box" id="step4Box" style="display:none;">
+          <div class="step-title"><span class="badge">4</span> Выберите итоговое упрощение:</div>
+          <div class="btn-row" id="finalOptionsContainer"></div>
+        </div>
+
+        <!-- Блок обратной связи -->
+        <div class="feedback-message" id="stepFeedback"></div>
+
+        <button class="action-btn" id="nextTaskBtn" style="display:none;" onclick="nextTask()">Следующее задание →</button>
+      </div>
+
+      <!-- ИТОГОВАЯ КАРТОЧКА С ОЦЕНКОЙ -->
+      <div class="result-view" id="resultView">
+        <div class="grade-circle" id="gradeNumber">5</div>
+        <h2 class="result-title" id="gradeTitle">Отличная работа!</h2>
+        <p class="result-desc" id="gradeDesc">Вы верно решили все 5 заданий варианта.</p>
+        <button class="action-btn" onclick="restartVariant()">Пройти еще раз</button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // БАЗА ЗАДАНИЙ (3 варианта по 5 вопросов)
+    const variants = [
+      // Вариант 1
+      [
+        {
+          expr: "sin(135°)",
+          quadrant: 2,
+          sign: "+",
+          axis: "horizontal",
+          baseAngle: "180°",
+          restPart: "- 45°",
+          markerId: "marker-left",
+          dotId: "dot-left",
+          changeFunc: false,
+          options: ["+cos(45°)", "-cos(45°)", "+sin(45°)", "-sin(45°)"],
+          correctOption: "+sin(45°)"
+        },
+        {
+          expr: "cos(240°)",
+          quadrant: 3,
+          sign: "-",
+          axis: "horizontal",
+          baseAngle: "180°",
+          restPart: "+ 60°",
+          markerId: "marker-left",
+          dotId: "dot-left",
+          changeFunc: false,
+          options: ["-cos(60°)", "+cos(60°)", "-sin(60°)", "+sin(60°)"],
+          correctOption: "-cos(60°)"
+        },
+        {
+          expr: "sin(90° + α)",
+          quadrant: 2,
+          sign: "+",
+          axis: "vertical",
+          baseAngle: "90°",
+          restPart: "+ α",
+          markerId: "marker-top",
+          dotId: "dot-top",
+          changeFunc: true,
+          options: ["+cos(α)", "-cos(α)", "+sin(α)", "-sin(α)"],
+          correctOption: "+cos(α)"
+        },
+        {
+          expr: "cos(3π/2 - α)",
+          quadrant: 3,
+          sign: "-",
+          axis: "vertical",
+          baseAngle: "3π/2",
+          restPart: "- α",
+          markerId: "marker-bottom",
+          dotId: "dot-bottom",
+          changeFunc: true,
+          options: ["-sin(α)", "+sin(α)", "-cos(α)", "+cos(α)"],
+          correctOption: "-sin(α)"
+        },
+        {
+          expr: "tg(180° - α)",
+          quadrant: 2,
+          sign: "-",
+          axis: "horizontal",
+          baseAngle: "180°",
+          restPart: "- α",
+          markerId: "marker-left",
+          dotId: "dot-left",
+          changeFunc: false,
+          options: ["-tg(α)", "+tg(α)", "-ctg(α)", "+ctg(α)"],
+          correctOption: "-tg(α)"
+        }
+      ],
+      // Вариант 2
+      [
+        {
+          expr: "cos(120°)",
+          quadrant: 2,
+          sign: "-",
+          axis: "vertical",
+          baseAngle: "90°",
+          restPart: "+ 30°",
+          markerId: "marker-top",
+          dotId: "dot-top",
+          changeFunc: true,
+          options: ["-sin(30°)", "+sin(30°)", "-cos(30°)", "+cos(30°)"],
+          correctOption: "-sin(30°)"
+        },
+        {
+          expr: "sin(210°)",
+          quadrant: 3,
+          sign: "-",
+          axis: "horizontal",
+          baseAngle: "180°",
+          restPart: "+ 30°",
+          markerId: "marker-left",
+          dotId: "dot-left",
+          changeFunc: false,
+          options: ["-sin(30°)", "+sin(30°)", "-cos(30°)", "+cos(30°)"],
+          correctOption: "-sin(30°)"
+        },
+        {
+          expr: "sin(3π/2 + α)",
+          quadrant: 4,
+          sign: "-",
+          axis: "vertical",
+          baseAngle: "3π/2",
+          restPart: "+ α",
+          markerId: "marker-bottom",
+          dotId: "dot-bottom",
+          changeFunc: true,
+          options: ["-cos(α)", "+cos(α)", "-sin(α)", "+sin(α)"],
+          correctOption: "-cos(α)"
+        },
+        {
+          expr: "cos(π - α)",
+          quadrant: 2,
+          sign: "-",
+          axis: "horizontal",
+          baseAngle: "π",
+          restPart: "- α",
+          markerId: "marker-left",
+          dotId: "dot-left",
+          changeFunc: false,
+          options: ["-cos(α)", "+cos(α)", "-sin(α)", "+sin(α)"],
+          correctOption: "-cos(α)"
+        },
+        {
+          expr: "sin(300°)",
+          quadrant: 4,
+          sign: "-",
+          axis: "vertical",
+          baseAngle: "270°",
+          restPart: "+ 30°",
+          markerId: "marker-bottom",
+          dotId: "dot-bottom",
+          changeFunc: true,
+          options: ["-cos(30°)", "+cos(30°)", "-sin(30°)", "+sin(30°)"],
+          correctOption: "-cos(30°)"
+        }
+      ],
+      // Вариант 3
+      [
+        {
+          expr: "cos(π/2 + α)",
+          quadrant: 2,
+          sign: "-",
+          axis: "vertical",
+          baseAngle: "π/2",
+          restPart: "+ α",
+          markerId: "marker-top",
+          dotId: "dot-top",
+          changeFunc: true,
+          options: ["-sin(α)", "+sin(α)", "-cos(α)", "+cos(α)"],
+          correctOption: "-sin(α)"
+        },
+        {
+          expr: "sin(π - α)",
+          quadrant: 2,
+          sign: "+",
+          axis: "horizontal",
+          baseAngle: "π",
+          restPart: "- α",
+          markerId: "marker-left",
+          dotId: "dot-left",
+          changeFunc: false,
+          options: ["+sin(α)", "-sin(α)", "+cos(α)", "-cos(α)"],
+          correctOption: "+sin(α)"
+        },
+        {
+          expr: "tg(π + α)",
+          quadrant: 3,
+          sign: "+",
+          axis: "horizontal",
+          baseAngle: "π",
+          restPart: "+ α",
+          markerId: "marker-left",
+          dotId: "dot-left",
+          changeFunc: false,
+          options: ["+tg(α)", "-tg(α)", "+ctg(α)", "-ctg(α)"],
+          correctOption: "+tg(α)"
+        },
+        {
+          expr: "cos(300°)",
+          quadrant: 4,
+          sign: "+",
+          axis: "vertical",
+          baseAngle: "270°",
+          restPart: "+ 30°",
+          markerId: "marker-bottom",
+          dotId: "dot-bottom",
+          changeFunc: true,
+          options: ["+sin(30°)", "-sin(30°)", "+cos(30°)", "-cos(30°)"],
+          correctOption: "+sin(30°)"
+        },
+        {
+          expr: "sin(2π - α)",
+          quadrant: 4,
+          sign: "-",
+          axis: "horizontal",
+          baseAngle: "2π",
+          restPart: "- α",
+          markerId: "marker-right",
+          dotId: "dot-right",
+          changeFunc: false,
+          options: ["-sin(α)", "+sin(α)", "-cos(α)", "+cos(α)"],
+          correctOption: "-sin(α)"
+        }
+      ]
+    ];
+
+    let currentVariantIdx = 0;
+    let currentTaskIdx = 0;
+    let currentStep = 1;
+    let userErrorsInTask = 0;
+    let tasksPassedWell = 0;
+    let horseTimer = null;
+
+    const horseHead = document.getElementById('horseHead');
+
+    // Реакция лошадки: запускает движение без текста
+    function horseReact(type) {
+      if (!horseHead) return;
+
+      clearTimeout(horseTimer);
+      horseHead.classList.remove('nod-yes', 'shake-no');
+      void horseHead.offsetWidth; // перезапуск анимации
+
+      if (type === 'vertical') {
+        horseHead.classList.add('nod-yes');
+      } else {
+        horseHead.classList.add('shake-no');
+      }
+
+      // Автоматическая плавная остановка через 5 секунд (или сразу по клику на лошадку)
+      horseTimer = setTimeout(() => {
+        horseReset();
+      }, 5500);
+    }
+
+    // Остановка движения лошадки
+    function horseReset() {
+      clearTimeout(horseTimer);
+      if (horseHead) {
+        horseHead.classList.remove('nod-yes', 'shake-no');
+      }
+    }
+
+    // Независимый клик по любому углу на круге
+    function triggerAngle(axis, markerId, dotId) {
+      clearMarkerHighlights();
+      
+      const marker = document.getElementById(markerId);
+      const dot = document.getElementById(dotId);
+
+      if (marker) {
+        if (axis === 'vertical') marker.classList.add('force-active');
+        else marker.classList.add('horizontal-active');
+      }
+      if (dot) {
+        dot.classList.add('pulse-dot');
+      }
+
+      // Запускаем реакцию лошадки
+      horseReact(axis);
+    }
+
+    // Клик по плашке угла в тексте шага 3
+    function askHorseForCurrentTask() {
+      const task = variants[currentVariantIdx][currentTaskIdx];
+      triggerAngle(task.axis, task.markerId, task.dotId);
+    }
+
+    window.onload = () => {
+      loadTask(0);
+    };
+
+    function changeVariant(idx) {
+      currentVariantIdx = parseInt(idx);
+      restartVariant();
+    }
+
+    function restartVariant() {
+      currentTaskIdx = 0;
+      tasksPassedWell = 0;
+      document.getElementById('resultView').style.display = 'none';
+      document.getElementById('quizPlayArea').style.display = 'block';
+      loadTask(0);
+    }
+
+    function loadTask(idx) {
+      currentTaskIdx = idx;
+      currentStep = 1;
+      userErrorsInTask = 0;
+
+      const task = variants[currentVariantIdx][currentTaskIdx];
+      document.getElementById('taskCounter').textContent = `Задание ${currentTaskIdx + 1} из 5`;
+      document.getElementById('currentExpr').textContent = task.expr;
+      
+      // Сброс шагов
+      document.getElementById('step1Box').style.display = 'flex';
+      document.getElementById('step2Box').style.display = 'none';
+      document.getElementById('step3Box').style.display = 'none';
+      document.getElementById('step4Box').style.display = 'none';
+      document.getElementById('nextTaskBtn').style.display = 'none';
+      
+      // Сброс подсветки кнопок
+      resetButtonStyles('step2Box');
+      resetButtonStyles('step3Box');
+      clearFeedback();
+      clearQuadrantHighlights();
+      clearMarkerHighlights();
+      horseReset();
+
+      // Генерация выражения для шага 3
+      const badgeClass = task.axis === 'vertical' ? 'vertical' : 'horizontal';
+      document.getElementById('decompositionContainer').innerHTML = `
+        <div class="decomposition-expr">
+          Представим угол: <b>(&nbsp;<span class="angle-badge ${badgeClass}" onclick="askHorseForCurrentTask()" title="Нажмите, чтобы спросить лошадку">${task.baseAngle} 👆</span> ${task.restPart}&nbsp;)</b>
+        </div>
+      `;
+
+      document.getElementById('axisPromptText').innerHTML = `
+        👉 <b>Нажмите на угол на круге слева</b> (или на плашку <b>${task.baseAngle}</b> выше) — посмотрите на направление движения головы лошадки и решите: меняется функция или нет!
+      `;
+    }
+
+    // ШАГ 1: Клик по четверти
+    function handleQuadrantClick(quadNumber) {
+      if (currentStep !== 1) return;
+
+      const task = variants[currentVariantIdx][currentTaskIdx];
+      const quadElem = document.getElementById(`quad-${quadNumber}`);
+
+      clearQuadrantHighlights();
+
+      if (quadNumber === task.quadrant) {
+        quadElem.classList.add('highlight-active');
+        showFeedback("Верно! Четверть определена правильно.", true);
+        currentStep = 2;
+        document.getElementById('step2Box').style.display = 'flex';
+      } else {
+        quadElem.classList.add('highlight-wrong');
+        userErrorsInTask++;
+        showFeedback(`Неверно. Подумайте ещё раз, в какой четверти лежит этот угол.`, false);
+      }
+    }
+
+    // ШАГ 2: Проверка знака
+    function checkSign(selectedSign) {
+      if (currentStep !== 2) return;
+      const task = variants[currentVariantIdx][currentTaskIdx];
+
+      const btnPlus = document.getElementById('btn-sign-plus');
+      const btnMinus = document.getElementById('btn-sign-minus');
+      const chosenBtn = selectedSign === '+' ? btnPlus : btnMinus;
+      const otherBtn = selectedSign === '+' ? btnMinus : btnPlus;
+
+      if (selectedSign === task.sign) {
+        chosenBtn.classList.add('selected-persistent');
+        otherBtn.classList.add('unselected-dim');
+
+        showFeedback(`Правильно! В этой четверти функция имеет знак "${task.sign}". Теперь переходим к лошадиному правилу:`, true);
+        currentStep = 3;
+        document.getElementById('step3Box').style.display = 'flex';
+
+        pulseTargetAngle(task);
+        horseReset();
+      } else {
+        userErrorsInTask++;
+        chosenBtn.classList.add('wrong-temp');
+        setTimeout(() => chosenBtn.classList.remove('wrong-temp'), 700);
+        showFeedback("Неверный знак! Вспомните знаки тригонометрической функции в этой четверти.", false);
+      }
+    }
+
+    // ШАГ 3: Лошадиное правило (Да / Нет)
+    function checkFunctionChange(userChoice) {
+      if (currentStep !== 3) return;
+      const task = variants[currentVariantIdx][currentTaskIdx];
+
+      const btnYes = document.getElementById('btn-change-yes');
+      const btnNo = document.getElementById('btn-change-no');
+      const chosenBtn = userChoice ? btnYes : btnNo;
+      const otherBtn = userChoice ? btnNo : btnYes;
+
+      if (userChoice === task.changeFunc) {
+        chosenBtn.classList.add('selected-persistent');
+        otherBtn.classList.add('unselected-dim');
+
+        const successText = task.changeFunc ? 
+          "Точно! Ось вертикальная — киваем «ДА» (вверх-вниз), функция меняется на кофункцию!" : 
+          "Точно! Ось горизонтальная — мотаем «НЕТ» (влево-вправо), название функции сохраняется!";
+        
+        showFeedback(successText, true);
+
+        currentStep = 4;
+        setupFinalOptions(task);
+        document.getElementById('step4Box').style.display = 'flex';
+      } else {
+        userErrorsInTask++;
+        chosenBtn.classList.add('wrong-temp');
+        setTimeout(() => chosenBtn.classList.remove('wrong-temp'), 700);
+        showFeedback("Неверно! Нажмите на угол на круге и посмотрите, как двигается голова лошадки.", false);
+      }
+    }
+
+    // ШАГ 4: Итоговый ответ
+    function setupFinalOptions(task) {
+      const container = document.getElementById('finalOptionsContainer');
+      container.innerHTML = '';
+
+      task.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-btn';
+        btn.textContent = opt;
+        btn.onclick = () => checkFinalOption(opt, task.correctOption, btn);
+        container.appendChild(btn);
+      });
+    }
+
+    function checkFinalOption(chosen, correct, btnElem) {
+      if (currentStep !== 4) return;
+
+      if (chosen === correct) {
+        btnElem.classList.add('selected-persistent');
+        
+        const allBtns = document.querySelectorAll('#finalOptionsContainer button');
+        allBtns.forEach(b => {
+          if (b !== btnElem) b.classList.add('unselected-dim');
+        });
+
+        showFeedback("Отлично! Формула составлена абсолютно верно!", true);
+        if (userErrorsInTask === 0) {
+          tasksPassedWell++;
+        }
+        document.getElementById('nextTaskBtn').style.display = 'block';
+        currentStep = 5;
+      } else {
+        btnElem.classList.add('wrong-temp');
+        setTimeout(() => btnElem.classList.remove('wrong-temp'), 700);
+        userErrorsInTask++;
+        showFeedback("Не сходится знак или функция. Посмотрите на шаги выше!", false);
+      }
+    }
+
+    function nextTask() {
+      if (currentTaskIdx < 4) {
+        loadTask(currentTaskIdx + 1);
+      } else {
+        showResults();
+      }
+    }
+
+    function showResults() {
+      document.getElementById('quizPlayArea').style.display = 'none';
+      const resultView = document.getElementById('resultView');
+      resultView.style.display = 'block';
+
+      let grade = 2;
+      let title = "Нужно подучить правила!";
+      let desc = `Вы решили без ошибок: ${tasksPassedWell} из 5 заданий.`;
+
+      if (tasksPassedWell === 5) {
+        grade = 5;
+        title = "Великолепно! Ты мастер формул приведения!";
+      } else if (tasksPassedWell === 4) {
+        grade = 4;
+        title = "Хороший результат! Почти без ошибок.";
+      } else if (tasksPassedWell === 3) {
+        grade = 3;
+        title = "Удовлетворительно. Лошадка советует потренироваться ещё!";
+      }
+
+      document.getElementById('gradeNumber').textContent = grade;
+      document.getElementById('gradeTitle').textContent = title;
+      document.getElementById('gradeDesc').textContent = desc;
+    }
+
+    // Вспомогательные функции
+    function pulseTargetAngle(task) {
+      clearMarkerHighlights();
+      if (task.dotId) {
+        const dot = document.getElementById(task.dotId);
+        if (dot) dot.classList.add('pulse-dot');
+      }
+      if (task.markerId) {
+        const marker = document.getElementById(task.markerId);
+        if (marker) {
+          if (task.axis === 'vertical') marker.classList.add('force-active');
+          else marker.classList.add('horizontal-active');
+        }
+      }
+    }
+
+    function clearMarkerHighlights() {
+      ['marker-top', 'marker-bottom', 'marker-left', 'marker-right'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('force-active', 'horizontal-active');
+      });
+      ['dot-top', 'dot-bottom', 'dot-left', 'dot-right'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('pulse-dot');
+      });
+    }
+
+    function showFeedback(msg, isSuccess) {
+      const fb = document.getElementById('stepFeedback');
+      fb.textContent = msg;
+      fb.className = `feedback-message show ${isSuccess ? 'success' : 'error'}`;
+    }
+
+    function clearFeedback() {
+      const fb = document.getElementById('stepFeedback');
+      fb.className = 'feedback-message';
+      fb.textContent = '';
+    }
+
+    function clearQuadrantHighlights() {
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById(`quad-${i}`);
+        if (el) el.classList.remove('highlight-active', 'highlight-wrong');
+      }
+    }
+
+    function resetButtonStyles(containerId) {
+      const btns = document.querySelectorAll(`#${containerId} button.quiz-btn`);
+      btns.forEach(b => {
+        b.className = 'quiz-btn';
+        b.disabled = false;
+      });
+    }
+  </script>
+</body>
+</html>
